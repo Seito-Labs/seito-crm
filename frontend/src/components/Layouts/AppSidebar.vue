@@ -258,23 +258,25 @@ const links = [
     to: 'Dashboard',
     condition: () => !props.mobile,
   },
+  // Leads hidden for Seito - using Deals for Refund Requests
+  // {
+  //   label: 'Leads',
+  //   icon: LeadsIcon,
+  //   to: 'Leads',
+  // },
   {
-    label: 'Leads',
-    icon: LeadsIcon,
-    to: 'Leads',
-  },
-  {
-    label: 'Deals',
+    label: 'Refund Requests',  // Renamed from Deals for Seito
     icon: DealsIcon,
     to: 'Deals',
   },
+  // Contacts hidden for Seito - using Organizations (Students) only
+  // {
+  //   label: 'Contacts',
+  //   icon: ContactsIcon,
+  //   to: 'Contacts',
+  // },
   {
-    label: 'Contacts',
-    icon: ContactsIcon,
-    to: 'Contacts',
-  },
-  {
-    label: 'Organizations',
+    label: 'Students',  // Renamed from Organizations for Seito
     icon: OrganizationsIcon,
     to: 'Organizations',
   },
