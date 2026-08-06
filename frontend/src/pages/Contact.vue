@@ -345,7 +345,7 @@ const parsedSections = computed(() => {
 
 const fieldLabelMap = {
   mobile_no: __('Mobile Number'),
-  company_name: __('Organization'),
+  company_name: __('Student'),
 }
 
 const fieldPlaceholderMap = {
@@ -381,7 +381,7 @@ function getDealRowObject(deal) {
 
 const dealColumns = [
   {
-    label: __('Organization'),
+    label: __('Student'),
     key: 'organization',
     width: '11rem',
   },

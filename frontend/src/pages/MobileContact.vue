@@ -373,7 +373,7 @@ function getDealRowObject(deal) {
 
 const dealColumns = [
   {
-    label: __('Organization'),
+    label: __('Student'),
     key: 'organization',
     width: '11rem',
   },

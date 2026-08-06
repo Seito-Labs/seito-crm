@@ -1,7 +1,7 @@
 <template>
   <LayoutHeader>
     <template #left-header>
-      <ViewBreadcrumbs v-model="viewControls" routeName="Organizations" />
+      <ViewBreadcrumbs v-model="viewControls" routeName="Organizations" displayLabel="Students" />
     </template>
     <template #right-header>
       <CustomActions
@@ -49,7 +49,7 @@
   />
   <EmptyState
     v-else-if="organizations.data && !rows.length"
-    name="Organizations"
+    name="Students"
     :icon="OrganizationsIcon"
   />
   <OrganizationModal

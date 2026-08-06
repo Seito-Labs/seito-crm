@@ -64,7 +64,7 @@
         {{ __(dealId) }}
       </div>
       <div class="flex items-center justify-start gap-5 border-b p-5">
-        <Tooltip :text="__('Organization Logo')">
+        <Tooltip :text="__('Student Logo')">
           <div class="group relative size-12">
             <Avatar
               size="3xl"
@@ -75,7 +75,7 @@
           </div>
         </Tooltip>
         <div class="flex flex-col gap-2.5 truncate text-ink-gray-9">
-          <Tooltip :text="organization?.name || __('Set an Organization')">
+          <Tooltip :text="organization?.name || __('Set a Student')">
             <div class="truncate text-3xl-medium">
               {{ title }}
             </div>

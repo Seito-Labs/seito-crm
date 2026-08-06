@@ -9,7 +9,7 @@
           : 'text-ink-gray-7',
       ]"
     >
-      {{ __(routeName) }}
+      {{ __(displayLabel || routeName) }}
     </router-link>
     <span
       v-if="viewControls && viewControls.viewsDropdownOptions"
@@ -66,6 +66,7 @@ import { Dropdown } from 'frappe-ui'
 
 defineProps({
   routeName: { type: String, required: true },
+  displayLabel: { type: String, default: '' },
 })
 
 const viewControls = defineModel({ type: Object, default: () => ({}) })

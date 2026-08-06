@@ -5,7 +5,7 @@
         <div class="flex items-center justify-between mb-5">
           <div>
             <h3 class="text-3xl-semibold leading-6 text-ink-gray-9">
-              {{ __('New Organization') }}
+              {{ __('New Student') }}
             </h3>
           </div>
           <div class="flex items-center gap-1">

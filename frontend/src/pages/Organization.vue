@@ -173,7 +173,7 @@
     v-model="showDeleteLinkedDocModal"
     :doctype="'CRM Organization'"
     :docname="props.organizationId"
-    name="Organizations"
+    name="Students"
   />
 </template>
 
@@ -254,7 +254,7 @@ onMounted(async () => {
 })
 
 const breadcrumbs = computed(() => {
-  let items = [{ label: __('Organizations'), route: { name: 'Organizations' } }]
+  let items = [{ label: __('Students'), route: { name: 'Organizations' } }]
 
   if (route.query.view || route.query.viewType) {
     let view = getView(
@@ -485,7 +485,7 @@ function getContactRowObject(contact) {
 
 const dealColumns = [
   {
-    label: __('Organization'),
+    label: __('Student'),
     key: 'organization',
     width: '11rem',
   },
@@ -539,7 +539,7 @@ const contactColumns = [
     width: '12rem',
   },
   {
-    label: __('Organization'),
+    label: __('Student'),
     key: 'company_name',
     width: '12rem',
   },

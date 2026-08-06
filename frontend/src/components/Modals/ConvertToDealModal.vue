@@ -22,7 +22,7 @@
     <template #default>
       <div class="mb-4 flex items-center gap-2 text-ink-gray-5">
         <OrganizationsIcon class="h-4 w-4" />
-        <label class="block text-base">{{ __('Organization') }}</label>
+        <label class="block text-base">{{ __('Student') }}</label>
       </div>
       <div class="ml-6 text-ink-gray-9">
         <div class="flex items-center justify-between text-base">

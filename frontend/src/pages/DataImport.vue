@@ -34,7 +34,7 @@ const doctypeMap = {
     listRoute: '/crm/tasks',
   },
   'CRM Organization': {
-    title: 'Organizations',
+    title: 'Students',
     listRoute: '/crm/organizations',
     pageRoute: `/crm/organizations/docname`,
   },

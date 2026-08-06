@@ -673,7 +673,7 @@ const articles = ref([
       { name: 'lead', title: __('Lead') },
       { name: 'deal', title: __('Deal') },
       { name: 'contact', title: __('Contact') },
-      { name: 'organization', title: __('Organization') },
+      { name: 'organization', title: __('Student') },
       { name: 'note', title: __('Note') },
       { name: 'task', title: __('Task') },
       { name: 'call-log', title: __('Call Log') },
