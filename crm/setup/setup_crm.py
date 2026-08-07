@@ -311,6 +311,14 @@ def add_refund_request_custom_fields():
             "fieldtype": "Text",
             "insert_after": "master_status",
         },
+        {
+            "dt": "CRM Deal",
+            "fieldname": "resolution_notes",
+            "label": "Resolution Notes",
+            "fieldtype": "Text",
+            "insert_after": "counsellor_notes",
+            "description": "Notes for Approved/Rejected resolution",
+        },
     ]
 
     _create_custom_fields(custom_fields)
@@ -429,6 +437,7 @@ def update_crm_field_layouts():
         "status",  # Support Status
         "deal_owner",  # Counsellor
         "counsellor_notes",
+        "resolution_notes",  # For Approved/Rejected
         "lost_reason",  # Required for Rejected
     ]
 

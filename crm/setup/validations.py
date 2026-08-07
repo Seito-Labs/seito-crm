@@ -12,9 +12,21 @@ def validate_refund_request(doc, method):
 
     - Prevents status change once Approved or Rejected (final states)
     - Only Seito Admin can reopen closed requests
+    - Requires resolution_notes for Approved/Rejected
     """
     if doc.is_new():
         return
+
+    # Validate resolution_notes for final statuses
+    if doc.status:
+        status_type = frappe.db.get_value("CRM Deal Status", doc.status, "type")
+
+        if status_type in ["Won", "Lost"]:  # Approved or Rejected
+            if not doc.get("resolution_notes"):
+                frappe.throw(
+                    _("Resolution Notes are required when status is {0}").format(doc.status),
+                    frappe.MandatoryError
+                )
 
     # Get the old document to compare
     old_doc = doc.get_doc_before_save()
