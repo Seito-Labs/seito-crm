@@ -175,8 +175,16 @@ doc_events = {
 		"on_update": ["crm.api.whatsapp.on_update"],
 	},
 	"CRM Deal": {
+		"validate": [
+			"crm.setup.validations.validate_refund_request"
+		],
 		"on_update": [
 			"crm.fcrm.doctype.erpnext_crm_settings.erpnext_crm_settings.create_customer_in_erpnext"
+		],
+	},
+	"CRM Organization": {
+		"validate": [
+			"crm.setup.validations.validate_student"
 		],
 	},
 	"Sales Order": {

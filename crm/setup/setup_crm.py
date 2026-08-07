@@ -2,6 +2,15 @@
 Setup script for customizing Frappe CRM for Seito Refund Request workflow.
 Run with: bench --site <site> execute crm.setup.setup_crm.execute
 This script is idempotent - safe to run multiple times.
+
+Field Mappings (Built-in → Your Fields):
+- status → support_status (workflow statuses)
+- deal_owner → counsellor_name (assigned user)
+- organization → student (link to student)
+- currency → for refundable_amount
+- creation → created_at
+- modified → updated_at
+- lost_reason → rejection reason
 """
 
 import frappe
@@ -21,14 +30,22 @@ def execute():
     # Add custom fields to CRM Deal (Refund Request)
     add_refund_request_custom_fields()
 
-    # Setup refund request statuses
+    # Setup refund request statuses (maps to support_status)
     setup_refund_request_statuses()
 
-    # Update CRM Fields Layout to show custom fields in UI
+    # Update CRM Fields Layout to show only relevant fields
     update_crm_field_layouts()
+
+    # Remove unused custom fields (mapped to built-in)
+    cleanup_duplicate_fields()
 
     frappe.db.commit()
     print("\nCRM customization completed successfully!")
+    print("\nField Mappings:")
+    print("  status → Support Status (Pending Consultation, Under Review, etc.)")
+    print("  deal_owner → Counsellor (assigned user)")
+    print("  organization → Student")
+    print("  lost_reason → Rejection reason (required when Rejected)")
 
 
 def setup_roles():
@@ -120,11 +137,14 @@ def setup_permissions():
 
 
 def add_student_custom_fields():
-    """Add custom fields to CRM Organization for student information."""
+    """Add custom fields to CRM Organization for student information.
+
+    Maps:
+    - organization_name → Student Name (built-in, keep)
+    """
     print("\n=== Adding Student custom fields to CRM Organization ===")
 
     custom_fields = [
-        # Application ID with user-provided prefix (e.g., APP-UUID)
         {
             "dt": "CRM Organization",
             "fieldname": "application_id",
@@ -135,6 +155,7 @@ def add_student_custom_fields():
             "bold": 1,
             "in_list_view": 1,
             "in_standard_filter": 1,
+            "description": "Unique ID with user-provided prefix (e.g., APP-UUID)",
         },
         {
             "dt": "CRM Organization",
@@ -215,7 +236,17 @@ def add_student_custom_fields():
 
 
 def add_refund_request_custom_fields():
-    """Add custom fields to CRM Deal for refund request information."""
+    """Add custom fields to CRM Deal for refund request information.
+
+    Field Mappings (Built-in → Your Field):
+    - status → support_status (Pending Consultation, Under Review, etc.)
+    - deal_owner → counsellor_name (assigned user)
+    - organization → student (link)
+    - currency → for refundable_amount
+    - lost_reason → rejection reason (required when Rejected)
+    - creation → created_at
+    - modified → updated_at
+    """
     print("\n=== Adding Refund Request custom fields to CRM Deal ===")
 
     custom_fields = [
@@ -275,30 +306,10 @@ def add_refund_request_custom_fields():
         },
         {
             "dt": "CRM Deal",
-            "fieldname": "support_status",
-            "label": "Support Status",
-            "fieldtype": "Select",
-            "options": "\nPending Consultation\nUnder Review\nAwaiting Student Response\nApproved\nRejected",
-            "insert_after": "master_status",
-            "in_list_view": 1,
-            "in_standard_filter": 1,
-        },
-        {
-            "dt": "CRM Deal",
-            "fieldname": "counsellor_name",
-            "label": "Counsellor Name",
-            "fieldtype": "Link",
-            "options": "User",
-            "insert_after": "support_status",
-            "in_list_view": 1,
-            "in_standard_filter": 1,
-        },
-        {
-            "dt": "CRM Deal",
             "fieldname": "counsellor_notes",
             "label": "Counsellor Notes",
             "fieldtype": "Text",
-            "insert_after": "counsellor_name",
+            "insert_after": "master_status",
         },
     ]
 
@@ -319,7 +330,6 @@ def _create_custom_fields(custom_fields):
             cf.insert(ignore_permissions=True)
             print(f"  Created: {dt}.{fieldname}")
         else:
-            # Update existing field
             cf = frappe.get_doc("Custom Field", {"dt": dt, "fieldname": fieldname})
             cf.update(field_data)
             cf.save(ignore_permissions=True)
@@ -327,21 +337,28 @@ def _create_custom_fields(custom_fields):
 
 
 def setup_refund_request_statuses():
-    """Setup CRM Deal statuses for refund workflow."""
-    print("\n=== Setting up Refund Request statuses ===")
+    """Setup CRM Deal statuses for refund workflow.
 
-    # Note: These are for the CRM's status field (kanban view)
-    # master_status and support_status are separate custom fields
-    new_statuses = [
-        {"name": "New", "position": 1, "type": "Open"},
-        {"name": "Followup", "position": 2, "type": "Ongoing"},
-        {"name": "Approved", "position": 3, "type": "Won"},
-        {"name": "Rejected", "position": 4, "type": "Lost"},
+    These map to support_status via the built-in status field.
+    Status types determine workflow behavior:
+    - Open: New requests
+    - Ongoing: In progress
+    - Won: Approved (final - cannot be changed)
+    - Lost: Rejected (final - requires lost_reason)
+    """
+    print("\n=== Setting up Support Statuses ===")
+
+    statuses = [
+        {"name": "Pending Consultation", "position": 1, "type": "Open"},
+        {"name": "Under Review", "position": 2, "type": "Ongoing"},
+        {"name": "Awaiting Student Response", "position": 3, "type": "On Hold"},
+        {"name": "Approved", "position": 4, "type": "Won"},
+        {"name": "Rejected", "position": 5, "type": "Lost"},
     ]
 
     existing = frappe.get_all("CRM Deal Status", pluck="name")
 
-    for status_data in new_statuses:
+    for status_data in statuses:
         status_name = status_data["name"]
         if status_name not in existing:
             doc = frappe.new_doc("CRM Deal Status")
@@ -349,49 +366,81 @@ def setup_refund_request_statuses():
             doc.type = status_data["type"]
             doc.position = status_data["position"]
             doc.insert(ignore_permissions=True)
-            print(f"  Created status: {status_name}")
+            print(f"  Created: {status_name} ({status_data['type']})")
         else:
             doc = frappe.get_doc("CRM Deal Status", status_name)
+            doc.type = status_data["type"]
             doc.position = status_data["position"]
             doc.save(ignore_permissions=True)
-            print(f"  Updated status: {status_name}")
+            print(f"  Updated: {status_name} ({status_data['type']})")
+
+    # Delete old unused statuses
+    old_statuses = ["Qualification", "Demo/Making", "Proposal/Quotation",
+                    "Negotiation", "Ready to Close", "Won", "Lost",
+                    "New", "Followup"]
+    for old_status in old_statuses:
+        if frappe.db.exists("CRM Deal Status", old_status):
+            deals_count = frappe.db.count("CRM Deal", {"status": old_status})
+            if deals_count == 0:
+                frappe.delete_doc("CRM Deal Status", old_status, force=True)
+                print(f"  Deleted old: {old_status}")
+
+
+def cleanup_duplicate_fields():
+    """Remove custom fields that are mapped to built-in fields."""
+    print("\n=== Cleaning up duplicate fields ===")
+
+    # These custom fields should use built-in fields instead
+    duplicates = [
+        ("CRM Deal", "support_status"),      # Use built-in 'status'
+        ("CRM Deal", "counsellor_name"),     # Use built-in 'deal_owner'
+        ("CRM Organization", "student_id"),  # Use application_id
+        ("CRM Organization", "enrollment_status"),  # Not needed
+        ("CRM Organization", "enrolled_on"),  # Not needed
+    ]
+
+    for dt, fieldname in duplicates:
+        cf_name = frappe.db.exists("Custom Field", {"dt": dt, "fieldname": fieldname})
+        if cf_name:
+            frappe.delete_doc("Custom Field", cf_name, force=True)
+            print(f"  Removed: {dt}.{fieldname}")
 
 
 def update_crm_field_layouts():
-    """Update CRM Fields Layout to include custom fields in the UI."""
+    """Update CRM Fields Layout to show only relevant fields."""
     import json
 
     print("\n=== Updating CRM Fields Layout ===")
 
-    # Student fields for Organization
+    # Student fields to show
     student_fields = [
         "application_id", "first_name", "last_name",
         "student_email", "student_phone", "program",
         "elective", "batch", "university", "partner"
     ]
 
-    # Refund Request fields for Deal
+    # Refund Request fields to show
+    # Note: status = support_status, deal_owner = counsellor, organization = student
     refund_fields = [
         "refund_request_id", "ticket_id", "student_application_id",
-        "refund_reason", "refundable_amount", "master_status",
-        "support_status", "counsellor_name", "counsellor_notes"
+        "organization",  # Student link
+        "refund_reason", "refundable_amount", "currency",
+        "master_status",
+        "status",  # Support Status
+        "deal_owner",  # Counsellor
+        "counsellor_notes",
+        "lost_reason",  # Required for Rejected
     ]
 
-    # Update Organization Side Panel
+    # Update layouts
     _update_layout("CRM Organization-Side Panel", student_fields)
-
-    # Update Organization Quick Entry
-    _update_layout("CRM Organization-Quick Entry", student_fields[:6])  # First 6 fields for quick entry
-
-    # Update Deal Side Panel
+    _update_layout("CRM Organization-Quick Entry", student_fields[:6])
     _update_layout("CRM Deal-Side Panel", refund_fields)
-
-    # Update Deal Quick Entry
-    _update_layout("CRM Deal-Quick Entry", refund_fields[:5])  # First 5 fields for quick entry
+    _update_layout("CRM Deal-Quick Entry", refund_fields[:7])
 
 
-def _update_layout(layout_name, fields_to_add):
-    """Helper to update a CRM Fields Layout."""
+def _update_layout(layout_name, fields_to_show):
+    """Helper to update a CRM Fields Layout with specific fields."""
     import json
 
     if not frappe.db.exists("CRM Fields Layout", layout_name):
@@ -399,23 +448,17 @@ def _update_layout(layout_name, fields_to_add):
         return
 
     layout_doc = frappe.get_doc("CRM Fields Layout", layout_name)
-    layout_data = json.loads(layout_doc.layout) if layout_doc.layout else []
 
-    if layout_data and len(layout_data) > 0:
-        # Get existing fields in first section
-        if "columns" in layout_data[0] and len(layout_data[0]["columns"]) > 0:
-            existing_fields = layout_data[0]["columns"][0].get("fields", [])
-        else:
-            existing_fields = []
-            layout_data[0]["columns"] = [{"fields": []}]
+    # Create new layout with only the fields we want
+    new_layout = [{
+        "label": "Details",
+        "name": "details",
+        "opened": True,
+        "columns": [{
+            "fields": fields_to_show
+        }]
+    }]
 
-        # Add new fields if not present
-        for field in fields_to_add:
-            if field not in existing_fields:
-                existing_fields.append(field)
-
-        layout_data[0]["columns"][0]["fields"] = existing_fields
-
-    layout_doc.layout = json.dumps(layout_data)
+    layout_doc.layout = json.dumps(new_layout)
     layout_doc.save(ignore_permissions=True)
     print(f"  Updated: {layout_name}")
