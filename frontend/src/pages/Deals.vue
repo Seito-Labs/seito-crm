@@ -1,7 +1,7 @@
 <template>
   <LayoutHeader>
     <template #left-header>
-      <ViewBreadcrumbs v-model="viewControls" routeName="Deals" />
+      <ViewBreadcrumbs v-model="viewControls" routeName="Deals" displayLabel="Refund Requests" />
     </template>
     <template #right-header>
       <CustomActions
@@ -231,7 +231,7 @@
   />
   <EmptyState
     v-else-if="deals.data && !rows.length"
-    name="Deals"
+    name="Refund Requests"
     :icon="DealsIcon"
   />
   <DealModal

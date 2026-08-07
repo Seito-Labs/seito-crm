@@ -123,14 +123,7 @@
           </div>
         </div>
         <DealsListView
-          v-if="tab.label === 'Deals' && rows.length"
-          class="mt-4"
-          :rows="rows"
-          :columns="columns"
-          :options="{ selectable: false, showTooltip: false }"
-        />
-        <ContactsListView
-          v-if="tab.label === 'Contacts' && rows.length"
+          v-if="tab.label === 'Refund Requests' && rows.length"
           class="mt-4"
           :rows="rows"
           :columns="columns"
@@ -155,11 +148,9 @@ import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import Icon from '@/components/Icon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import DealsListView from '@/components/ListViews/DealsListView.vue'
-import ContactsListView from '@/components/ListViews/ContactsListView.vue'
 import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
 import CameraIcon from '@/components/Icons/CameraIcon.vue'
 import DealsIcon from '@/components/Icons/DealsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import { useDocument } from '@/data/document'
 import { getSettings } from '@/stores/settings'
 import { getMeta } from '@/stores/meta'
@@ -340,16 +331,10 @@ const tabs = [
     icon: DetailsIcon,
   },
   {
-    name: 'Deals',
-    label: __('Deals'),
+    name: 'Refund Requests',
+    label: __('Refund Requests'),
     icon: h(DealsIcon, { class: 'h-4 w-4' }),
     count: computed(() => deals.data?.length),
-  },
-  {
-    name: 'Contacts',
-    label: __('Contacts'),
-    icon: h(ContactsIcon, { class: 'h-4 w-4' }),
-    count: computed(() => contacts.data?.length),
   },
 ]
 
@@ -376,41 +361,18 @@ const deals = createListResource({
   auto: true,
 })
 
-const contacts = createListResource({
-  type: 'list',
-  doctype: 'Contact',
-  cache: ['contacts', props.organizationId],
-  fields: [
-    'name',
-    'full_name',
-    'image',
-    'email_id',
-    'mobile_no',
-    'company_name',
-    'modified',
-  ],
-  filters: {
-    company_name: props.organizationId,
-  },
-  orderBy: 'modified desc',
-  pageLength: 20,
-  auto: true,
-})
-
 const rows = computed(() => {
-  let list = !tabIndex.value ? deals : contacts
+  if (!deals.data) return []
 
-  if (!list.data) return []
-
-  return list.data.map((row) => {
-    return !tabIndex.value ? getDealRowObject(row) : getContactRowObject(row)
+  return deals.data.map((row) => {
+    return getDealRowObject(row)
   })
 })
 
 const { getFormattedCurrency } = getMeta('CRM Deal')
 
 const columns = computed(() => {
-  return tabIndex.value === 0 ? dealColumns : contactColumns
+  return dealColumns
 })
 
 function getDealRowObject(deal) {
@@ -432,24 +394,6 @@ function getDealRowObject(deal) {
       ...(deal.deal_owner && getUser(deal.deal_owner)),
     },
     modified: timestampCell(deal.modified),
-  }
-}
-
-function getContactRowObject(contact) {
-  return {
-    name: contact.name,
-    full_name: {
-      label: contact.full_name,
-      image_label: contact.full_name,
-      image: contact.image,
-    },
-    email: contact.email_id,
-    mobile_no: contact.mobile_no,
-    company_name: {
-      label: contact.company_name,
-      logo: organization.doc?.organization_logo,
-    },
-    modified: timestampCell(contact.modified),
   }
 }
 
@@ -481,37 +425,9 @@ const dealColumns = [
     width: '11rem',
   },
   {
-    label: __('Deal Owner'),
+    label: __('Counsellor'),
     key: 'deal_owner',
     width: '10rem',
-  },
-  {
-    label: __('Last Modified'),
-    key: 'modified',
-    width: '8rem',
-  },
-]
-
-const contactColumns = [
-  {
-    label: __('Name'),
-    key: 'full_name',
-    width: '17rem',
-  },
-  {
-    label: __('Email'),
-    key: 'email',
-    width: '12rem',
-  },
-  {
-    label: __('Phone'),
-    key: 'mobile_no',
-    width: '12rem',
-  },
-  {
-    label: __('Student'),
-    key: 'company_name',
-    width: '12rem',
   },
   {
     label: __('Last Modified'),

@@ -90,7 +90,8 @@ website_route_rules = [
 # Setup wizard
 # setup_wizard_requires = "assets/crm/js/setup_wizard.js"
 # setup_wizard_stages = "crm.setup.setup_wizard.setup_wizard.get_setup_stages"
-setup_wizard_complete = "crm.demo.api.create_demo_data"
+# Disabled demo data creation - causes PostgreSQL compatibility issues
+# setup_wizard_complete = "crm.demo.api.create_demo_data"
 # setup_wizard_test = "crm.setup.setup_wizard.test_setup_wizard.run_setup_wizard_test"
 
 # Installation
@@ -183,7 +184,10 @@ doc_events = {
 		],
 	},
 	"CRM Organization": {
-		"validate": [
+		"before_insert": [
+			"crm.setup.validations.validate_student"
+		],
+		"before_validate": [
 			"crm.setup.validations.validate_student"
 		],
 	},

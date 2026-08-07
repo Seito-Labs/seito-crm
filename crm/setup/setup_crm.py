@@ -75,16 +75,22 @@ def setup_permissions():
     """Setup permissions for Seito roles on CRM DocTypes."""
     print("\n=== Setting up role permissions ===")
 
-    doctypes = [
+    # Regular DocTypes - all roles can create/edit
+    regular_doctypes = [
         "CRM Deal",
         "CRM Organization",
-        "CRM Deal Status",
         "FCRM Note",
         "CRM Task",
         "Comment",
         "CRM Notification",
     ]
 
+    # Admin-only DocTypes - only Admin can create/edit statuses
+    admin_only_doctypes = [
+        "CRM Deal Status",
+    ]
+
+    # Permissions for regular DocTypes
     permissions_map = {
         "Seito Agent": {
             "read": 1, "write": 1, "create": 1, "delete": 0,
@@ -108,32 +114,73 @@ def setup_permissions():
         },
     }
 
-    for doctype in doctypes:
-        if not frappe.db.exists("DocType", doctype):
-            print(f"  Skipping {doctype} - does not exist")
-            continue
+    # Permissions for admin-only DocTypes (CRM Deal Status, etc.)
+    # Only Admin can create/write/delete, others can only read
+    admin_only_permissions_map = {
+        "Seito Agent": {
+            "read": 1, "write": 0, "create": 0, "delete": 0,
+            "report": 0, "export": 0, "import": 0, "share": 0,
+            "print": 0, "email": 0
+        },
+        "Seito Team Lead": {
+            "read": 1, "write": 0, "create": 0, "delete": 0,
+            "report": 0, "export": 0, "import": 0, "share": 0,
+            "print": 0, "email": 0
+        },
+        "Seito Manager": {
+            "read": 1, "write": 0, "create": 0, "delete": 0,
+            "report": 1, "export": 1, "import": 0, "share": 0,
+            "print": 0, "email": 0
+        },
+        "Seito Admin": {
+            "read": 1, "write": 1, "create": 1, "delete": 1,
+            "report": 1, "export": 1, "import": 1, "share": 1,
+            "print": 1, "email": 1
+        },
+    }
 
-        for role, perms in permissions_map.items():
-            existing = frappe.db.exists("Custom DocPerm", {
-                "parent": doctype,
-                "role": role
-            })
+    # Apply permissions to regular DocTypes
+    for doctype in regular_doctypes:
+        _apply_permissions(doctype, permissions_map)
 
-            if not existing:
-                perm = frappe.new_doc("Custom DocPerm")
-                perm.parent = doctype
-                perm.parenttype = "DocType"
-                perm.parentfield = "permissions"
-                perm.role = role
-                perm.permlevel = 0
+    # Apply restricted permissions to admin-only DocTypes
+    for doctype in admin_only_doctypes:
+        _apply_permissions(doctype, admin_only_permissions_map)
 
-                for key, val in perms.items():
-                    setattr(perm, key, val)
 
-                perm.insert(ignore_permissions=True)
-                print(f"  Added {role} permission for {doctype}")
-            else:
-                print(f"  Permission exists: {role} on {doctype}")
+def _apply_permissions(doctype, permissions_map):
+    """Helper to apply permissions to a DocType."""
+    if not frappe.db.exists("DocType", doctype):
+        print(f"  Skipping {doctype} - does not exist")
+        return
+
+    for role, perms in permissions_map.items():
+        existing = frappe.db.exists("Custom DocPerm", {
+            "parent": doctype,
+            "role": role
+        })
+
+        if existing:
+            # Update existing permission
+            perm = frappe.get_doc("Custom DocPerm", existing)
+            for key, val in perms.items():
+                setattr(perm, key, val)
+            perm.save(ignore_permissions=True)
+            print(f"  Updated {role} permission for {doctype}")
+        else:
+            # Create new permission
+            perm = frappe.new_doc("Custom DocPerm")
+            perm.parent = doctype
+            perm.parenttype = "DocType"
+            perm.parentfield = "permissions"
+            perm.role = role
+            perm.permlevel = 0
+
+            for key, val in perms.items():
+                setattr(perm, key, val)
+
+            perm.insert(ignore_permissions=True)
+            print(f"  Added {role} permission for {doctype}")
 
 
 def add_student_custom_fields():
@@ -441,11 +488,14 @@ def update_crm_field_layouts():
         "lost_reason",  # Required for Rejected
     ]
 
-    # Update layouts
+    # Update layouts - show all fields in Side Panel, Quick Entry, and Data Fields
     _update_layout("CRM Organization-Side Panel", student_fields)
-    _update_layout("CRM Organization-Quick Entry", student_fields[:6])
+    _update_layout("CRM Organization-Quick Entry", student_fields)  # All student fields
     _update_layout("CRM Deal-Side Panel", refund_fields)
-    _update_layout("CRM Deal-Quick Entry", refund_fields[:7])
+    _update_layout("CRM Deal-Quick Entry", refund_fields[:9])  # Up to master_status
+
+    # Update Data Fields layout (main detail view)
+    _update_data_fields_layout()
 
 
 def _update_layout(layout_name, fields_to_show):
@@ -471,3 +521,72 @@ def _update_layout(layout_name, fields_to_show):
     layout_doc.layout = json.dumps(new_layout)
     layout_doc.save(ignore_permissions=True)
     print(f"  Updated: {layout_name}")
+
+
+def _update_data_fields_layout():
+    """Update or create CRM Deal-Data Fields layout for Refund Request detail view."""
+    import json
+
+    layout_name = "CRM Deal-Data Fields"
+
+    # Refund Request data fields layout
+    # Organized in sections with multiple columns
+    new_layout = [{
+        "name": "first_tab",
+        "sections": [
+            {
+                "label": "Request Details",
+                "name": "request_details_section",
+                "opened": True,
+                "columns": [
+                    {
+                        "name": "column_1",
+                        "fields": ["refund_request_id", "ticket_id", "student_application_id"]
+                    },
+                    {
+                        "name": "column_2",
+                        "fields": ["organization", "refundable_amount", "currency"]
+                    }
+                ]
+            },
+            {
+                "label": "Status & Assignment",
+                "name": "status_section",
+                "opened": True,
+                "columns": [
+                    {
+                        "name": "column_3",
+                        "fields": ["status", "master_status"]
+                    },
+                    {
+                        "name": "column_4",
+                        "fields": ["deal_owner"]
+                    }
+                ]
+            },
+            {
+                "label": "Notes",
+                "name": "notes_section",
+                "opened": True,
+                "columns": [
+                    {
+                        "name": "column_5",
+                        "fields": ["refund_reason", "counsellor_notes", "resolution_notes"]
+                    }
+                ]
+            }
+        ]
+    }]
+
+    if frappe.db.exists("CRM Fields Layout", layout_name):
+        layout_doc = frappe.get_doc("CRM Fields Layout", layout_name)
+        layout_doc.layout = json.dumps(new_layout)
+        layout_doc.save(ignore_permissions=True)
+        print(f"  Updated: {layout_name}")
+    else:
+        layout_doc = frappe.new_doc("CRM Fields Layout")
+        layout_doc.dt = "CRM Deal"
+        layout_doc.type = "Data Fields"
+        layout_doc.layout = json.dumps(new_layout)
+        layout_doc.insert(ignore_permissions=True)
+        print(f"  Created: {layout_name}")

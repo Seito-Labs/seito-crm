@@ -277,16 +277,16 @@ class CRMDeal(Document):
 	def default_list_data():
 		columns = [
 			{
-				"label": "Organization",
+				"label": "Student",
 				"type": "Link",
 				"key": "organization",
 				"options": "CRM Organization",
 				"width": "11rem",
 			},
 			{
-				"label": "Annual Revenue",
+				"label": "Refundable Amount",
 				"type": "Currency",
-				"key": "annual_revenue",
+				"key": "refundable_amount",
 				"align": "right",
 				"width": "9rem",
 			},
@@ -298,21 +298,10 @@ class CRMDeal(Document):
 				"width": "10rem",
 			},
 			{
-				"label": "Email",
-				"type": "Data",
-				"key": "email",
-				"width": "12rem",
-			},
-			{
-				"label": "Mobile No.",
-				"type": "Data",
-				"key": "mobile_no",
-				"width": "11rem",
-			},
-			{
-				"label": "Assigned To",
-				"type": "Text",
-				"key": "_assign",
+				"label": "Counsellor",
+				"type": "Link",
+				"key": "deal_owner",
+				"options": "User",
 				"width": "10rem",
 			},
 			{
@@ -325,18 +314,15 @@ class CRMDeal(Document):
 		rows = [
 			"name",
 			"organization",
-			"annual_revenue",
+			"refundable_amount",
 			"status",
-			"email",
 			"currency",
-			"mobile_no",
 			"deal_owner",
 			"sla_status",
 			"response_by",
 			"first_response_time",
 			"first_responded_on",
 			"modified",
-			"_assign",
 		]
 		return {"columns": columns, "rows": rows}
 
@@ -345,7 +331,7 @@ class CRMDeal(Document):
 		return {
 			"column_field": "status",
 			"title_field": "organization",
-			"kanban_fields": '["annual_revenue", "email", "mobile_no", "_assign", "modified"]',
+			"kanban_fields": '["refundable_amount", "deal_owner", "modified"]',
 		}
 
 
