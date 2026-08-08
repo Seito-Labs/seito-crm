@@ -36,6 +36,9 @@ def execute():
     # Update CRM Fields Layout to show only relevant fields
     update_crm_field_layouts()
 
+    # Configure quick filters for search bars
+    setup_quick_filters()
+
     # Remove unused custom fields (mapped to built-in)
     cleanup_duplicate_fields()
 
@@ -521,6 +524,58 @@ def _update_layout(layout_name, fields_to_show):
     layout_doc.layout = json.dumps(new_layout)
     layout_doc.save(ignore_permissions=True)
     print(f"  Updated: {layout_name}")
+
+
+def setup_quick_filters():
+    """Configure quick filters (search bar fields) for CRM doctypes."""
+    import json
+
+    print("\n=== Setting up Quick Filters ===")
+
+    # Student quick filters
+    student_filters = [
+        "organization_name",  # Student Name
+        "application_id",
+        "student_email",
+        "program",
+        "university",
+        "batch",
+    ]
+
+    # Refund Request quick filters
+    refund_filters = [
+        "refund_request_id",
+        "status",
+        "organization",  # Student
+        "deal_owner",  # Counsellor
+        "master_status",
+    ]
+
+    _create_quick_filter_setting("CRM Organization", student_filters)
+    _create_quick_filter_setting("CRM Deal", refund_filters)
+
+
+def _create_quick_filter_setting(doctype, filters):
+    """Create or update CRM Global Settings for quick filters."""
+    import json
+
+    setting_name = frappe.db.exists("CRM Global Settings", {
+        "dt": doctype,
+        "type": "Quick Filters"
+    })
+
+    if setting_name:
+        doc = frappe.get_doc("CRM Global Settings", setting_name)
+        doc.json = json.dumps(filters)
+        doc.save(ignore_permissions=True)
+        print(f"  Updated quick filters for {doctype}")
+    else:
+        doc = frappe.new_doc("CRM Global Settings")
+        doc.dt = doctype
+        doc.type = "Quick Filters"
+        doc.json = json.dumps(filters)
+        doc.insert(ignore_permissions=True)
+        print(f"  Created quick filters for {doctype}")
 
 
 def _update_data_fields_layout():
