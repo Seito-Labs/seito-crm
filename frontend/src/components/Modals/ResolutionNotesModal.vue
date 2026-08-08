@@ -5,10 +5,10 @@
         {{ modalDescription }}
       </div>
       <div class="flex flex-col gap-3">
-        <!-- Lost Reason (only for Rejected status) -->
-        <div v-if="isRejected">
+        <!-- Lost Reason (only for Approved status - losing the student) -->
+        <div v-if="isApproved">
           <div class="mb-2 text-sm text-ink-gray-5">
-            {{ __('Lost Reason') }}
+            {{ __('Refund Reason') }}
             <span class="text-ink-red-5">*</span>
           </div>
           <Link
@@ -23,7 +23,7 @@
         <!-- Resolution Notes (required for both) -->
         <div>
           <div class="mb-2 text-sm text-ink-gray-5">
-            {{ __('Resolution Notes') }}
+            {{ notesLabel }}
             <span class="text-ink-red-5">*</span>
           </div>
           <FormControl
@@ -35,16 +35,17 @@
             @change="(e) => (resolutionNotes = e.target.value)"
           />
         </div>
-        <!-- Lost Notes (only for Rejected with Other reason) -->
-        <div v-if="isRejected && lostReason === 'Other'">
+        <!-- Additional Notes (only for Approved with Other reason) -->
+        <div v-if="isApproved && lostReason === 'Other'">
           <div class="mb-2 text-sm text-ink-gray-5">
-            {{ __('Lost Notes') }}
+            {{ __('Additional Notes') }}
             <span class="text-ink-red-5">*</span>
           </div>
           <FormControl
             class="form-control flex-1 truncate"
             type="textarea"
             :value="lostNotes"
+            :placeholder="__('Provide additional details for Other reason...')"
             @change="(e) => (lostNotes = e.target.value)"
           />
         </div>
@@ -86,22 +87,27 @@ const isRejected = computed(() => props.statusType === 'Lost')
 const isApproved = computed(() => props.statusType === 'Won')
 
 const modalTitle = computed(() => {
-  if (isApproved.value) return __('Approval Notes')
-  return __('Rejection Details')
+  if (isApproved.value) return __('Approve Refund')
+  return __('Reject Refund')
 })
 
 const modalDescription = computed(() => {
   if (isApproved.value) {
-    return __('Please provide resolution notes for approving this refund request.')
+    return __('Approving this refund means losing this student. Please provide the refund reason and notes.')
   }
-  return __('Please provide details for rejecting this refund request.')
+  return __('Please provide the reason for rejecting this refund request.')
+})
+
+const notesLabel = computed(() => {
+  if (isApproved.value) return __('Approval Notes')
+  return __('Rejection Notes')
 })
 
 const notesPlaceholder = computed(() => {
   if (isApproved.value) {
     return __('Enter approval notes, refund amount confirmed, etc.')
   }
-  return __('Enter rejection reason details...')
+  return __('Enter reason for rejecting this refund request...')
 })
 
 function cancel() {
@@ -116,19 +122,21 @@ function cancel() {
 function save() {
   // Validate resolution notes (required for both)
   if (!resolutionNotes.value) {
-    error.value = __('Resolution Notes are required')
+    error.value = isApproved.value
+      ? __('Approval Notes are required')
+      : __('Rejection Notes are required')
     return
   }
 
-  // Validate lost reason for Rejected status
-  if (isRejected.value && !lostReason.value) {
-    error.value = __('Lost Reason is required')
+  // Validate lost reason for Approved status (losing the student)
+  if (isApproved.value && !lostReason.value) {
+    error.value = __('Refund Reason is required')
     return
   }
 
-  // Validate lost notes if reason is Other
-  if (isRejected.value && lostReason.value === 'Other' && !lostNotes.value) {
-    error.value = __('Lost Notes are required when Lost Reason is "Other"')
+  // Validate additional notes if reason is Other
+  if (isApproved.value && lostReason.value === 'Other' && !lostNotes.value) {
+    error.value = __('Additional Notes are required when Refund Reason is "Other"')
     return
   }
 
@@ -136,7 +144,7 @@ function save() {
   show.value = false
 
   doc.resolution_notes = resolutionNotes.value
-  if (isRejected.value) {
+  if (isApproved.value) {
     doc.lost_reason = lostReason.value
     doc.lost_notes = lostNotes.value
   }

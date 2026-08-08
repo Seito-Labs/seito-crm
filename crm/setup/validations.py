@@ -12,19 +12,31 @@ def validate_refund_request(doc, method):
 
     - Prevents status change once Approved or Rejected (final states)
     - Only Seito Admin can reopen closed requests
-    - Requires resolution_notes for Approved/Rejected
+    - For Approved: requires lost_reason (refund reason) and resolution_notes
+    - For Rejected: requires resolution_notes only
     """
     if doc.is_new():
         return
 
-    # Validate resolution_notes for final statuses
+    # Validate fields for final statuses
     if doc.status:
         status_type = frappe.db.get_value("CRM Deal Status", doc.status, "type")
 
-        if status_type in ["Won", "Lost"]:  # Approved or Rejected
+        if status_type == "Won":  # Approved - losing the student
             if not doc.get("resolution_notes"):
                 frappe.throw(
-                    _("Resolution Notes are required when status is {0}").format(doc.status),
+                    _("Approval Notes are required when approving a refund"),
+                    frappe.MandatoryError
+                )
+            if not doc.get("lost_reason"):
+                frappe.throw(
+                    _("Refund Reason is required when approving a refund"),
+                    frappe.MandatoryError
+                )
+        elif status_type == "Lost":  # Rejected
+            if not doc.get("resolution_notes"):
+                frappe.throw(
+                    _("Rejection Notes are required when rejecting a refund"),
                     frappe.MandatoryError
                 )
 
