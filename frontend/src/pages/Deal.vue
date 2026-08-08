@@ -327,11 +327,12 @@
     :docname="dealId"
     name="Deals"
   />
-  <LostReasonModal
-    v-if="showLostReasonModal"
-    v-model="showLostReasonModal"
+  <ResolutionNotesModal
+    v-if="showResolutionModal"
+    v-model="showResolutionModal"
     doctype="CRM Deal"
     :document="document"
+    :statusType="resolutionStatusType"
   />
 </template>
 <script setup>
@@ -357,7 +358,7 @@ import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import Activities from '@/components/Activities/Activities.vue'
 import OrganizationModal from '@/components/Modals/OrganizationModal.vue'
-import LostReasonModal from '@/components/Modals/LostReasonModal.vue'
+import ResolutionNotesModal from '@/components/Modals/ResolutionNotesModal.vue'
 import AssignTo from '@/components/AssignTo.vue'
 import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
 import ContactModal from '@/components/Modals/ContactModal.vue'
@@ -785,45 +786,58 @@ function statusLabel(status) {
   return status
 }
 
-const showLostReasonModal = ref(false)
+const showResolutionModal = ref(false)
+const resolutionStatusType = ref('')
 
-function setLostReason() {
-  if (
-    getDealStatus(document.doc.status).type !== 'Lost' ||
-    (document.doc.lost_reason && document.doc.lost_reason !== 'Other') ||
-    (document.doc.lost_reason === 'Other' && document.doc.lost_notes)
-  ) {
-    document.save.submit(null, {
-      onSuccess: () => sections.reload(),
-    })
-    return
+function setResolutionNotes(statusType) {
+  // Check if resolution_notes already exists
+  if (document.doc.resolution_notes) {
+    // For Lost status, also check lost_reason
+    if (statusType === 'Lost') {
+      if (
+        document.doc.lost_reason &&
+        (document.doc.lost_reason !== 'Other' || document.doc.lost_notes)
+      ) {
+        document.save.submit(null, {
+          onSuccess: () => sections.reload(),
+        })
+        return
+      }
+    } else {
+      // For Won status, resolution_notes is enough
+      document.save.submit(null, {
+        onSuccess: () => sections.reload(),
+      })
+      return
+    }
   }
 
-  showLostReasonModal.value = true
+  resolutionStatusType.value = statusType
+  showResolutionModal.value = true
 }
 
 function beforeStatusChange(data) {
-  if (
-    Object.hasOwn(data ?? {}, 'status') &&
-    getDealStatus(data.status).type == 'Lost'
-  ) {
-    setLostReason()
-  } else {
-    document.save.submit(null, {
-      onSuccess: () => reloadResources(data),
-    })
+  if (Object.hasOwn(data ?? {}, 'status')) {
+    const statusType = getDealStatus(data.status).type
+    if (statusType === 'Won' || statusType === 'Lost') {
+      setResolutionNotes(statusType)
+      return
+    }
   }
+  document.save.submit(null, {
+    onSuccess: () => reloadResources(data),
+  })
 }
 
 function reloadResources(data) {
   if (Object.hasOwn(data ?? {}, 'deal_owner')) {
     assignees.reload()
   }
-  if (
-    Object.hasOwn(data ?? {}, 'status') &&
-    getDealStatus(data.status).type != 'Lost'
-  ) {
-    sections.reload()
+  if (Object.hasOwn(data ?? {}, 'status')) {
+    const statusType = getDealStatus(data.status).type
+    if (statusType !== 'Won' && statusType !== 'Lost') {
+      sections.reload()
+    }
   }
 }
 </script>
