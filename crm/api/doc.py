@@ -167,7 +167,11 @@ def get_quick_filters(doctype: str, cached: bool = True):
 
 	if global_settings := frappe.db.exists("CRM Global Settings", {"dt": doctype, "type": "Quick Filters"}):
 		_quick_filters = frappe.db.get_value("CRM Global Settings", global_settings, "json")
-		_quick_filters = json.loads(_quick_filters) or []
+		# PostgreSQL may return list directly, only parse if string
+		if isinstance(_quick_filters, str):
+			_quick_filters = json.loads(_quick_filters) or []
+		elif not _quick_filters:
+			_quick_filters = []
 
 		fields = []
 
@@ -431,6 +435,7 @@ def get_data(
 					doctype,
 					filters=convert_filter_to_tuple(doctype, new_filters),
 					fields=[COUNT_NAME],
+					order_by="",  # PostgreSQL requires no ORDER BY for COUNT queries
 				)[0].total_count
 
 				kc["all_count"] = all_count
@@ -533,7 +538,7 @@ def get_data(
 		"page_length_count": page_length_count,
 		"is_default": is_default,
 		"views": get_views(doctype),
-		"total_count": frappe.get_list(doctype, filters=filters, fields=[COUNT_NAME])[0].total_count,
+		"total_count": frappe.get_list(doctype, filters=filters, fields=[COUNT_NAME], order_by="")[0].total_count,  # PostgreSQL requires no ORDER BY for COUNT queries
 		"row_count": len(data),
 		"form_script": get_form_script(doctype),
 		"list_script": get_form_script(doctype, "List"),
