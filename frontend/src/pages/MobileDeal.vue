@@ -10,16 +10,8 @@
       </Breadcrumbs>
       <div class="absolute right-0">
         <Dropdown
-          v-if="doc"
-          :options="
-            statusOptions(
-              'deal',
-              document.statuses?.length
-                ? document.statuses
-                : document._statuses,
-              triggerStatusChange,
-            )
-          "
+          v-if="doc && !isStatusLocked"
+          :options="statuses"
         >
           <template #default="{ open }">
             <Button
@@ -33,6 +25,16 @@
             </Button>
           </template>
         </Dropdown>
+        <!-- Show locked status (no dropdown) for final states -->
+        <Button
+          v-else-if="doc && doc.status && isStatusLocked"
+          :label="statusLabel(doc.status)"
+          :disabled="true"
+        >
+          <template #prefix>
+            <IndicatorIcon :class="getDealStatus(doc.status).color" />
+          </template>
+        </Button>
       </div>
     </header>
   </LayoutHeader>
@@ -420,6 +422,21 @@ const breadcrumbs = computed(() => {
 const title = computed(() => {
   let t = doctypeMeta.value?.title_field || 'name'
   return doc.value?.[t] || props.dealId
+})
+
+const isStatusLocked = computed(() => {
+  const currentStatusType = getDealStatus(doc.value?.status)?.type
+  return currentStatusType === 'Won' || currentStatusType === 'Lost'
+})
+
+const statuses = computed(() => {
+  if (isStatusLocked.value) {
+    return []
+  }
+  let customStatuses = document.statuses?.length
+    ? document.statuses
+    : document._statuses || []
+  return statusOptions('deal', customStatuses, triggerStatusChange)
 })
 
 usePageMeta(() => {

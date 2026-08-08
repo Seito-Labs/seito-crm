@@ -18,7 +18,7 @@
       />
       <AssignTo v-model="assignees.data" doctype="CRM Deal" :docname="dealId" />
       <Dropdown
-        v-if="doc && document.statuses"
+        v-if="doc && document.statuses && !isStatusLocked"
         :options="statuses"
         placement="right"
       >
@@ -34,6 +34,17 @@
           </Button>
         </template>
       </Dropdown>
+      <!-- Show locked status (no dropdown) for final states -->
+      <Button
+        v-else-if="doc && doc.status && isStatusLocked"
+        :label="statusLabel(doc.status)"
+        :disabled="true"
+        :title="__('Status is locked. Contact admin to reopen.')"
+      >
+        <template #prefix>
+          <IndicatorIcon :class="getDealStatus(doc.status).color" />
+        </template>
+      </Button>
     </template>
   </LayoutHeader>
   <div v-if="doc.name" class="flex h-full overflow-hidden">
@@ -544,7 +555,17 @@ const title = computed(() => {
   return doc.value?.[t] || props.dealId
 })
 
+const isStatusLocked = computed(() => {
+  const currentStatusType = getDealStatus(document.doc?.status)?.type
+  return currentStatusType === 'Won' || currentStatusType === 'Lost'
+})
+
 const statuses = computed(() => {
+  // Check if current status is final (Won/Lost) - disable status changes
+  if (isStatusLocked.value) {
+    return [] // Return empty to disable dropdown
+  }
+
   let customStatuses = document.statuses?.length
     ? document.statuses
     : document._statuses || []
