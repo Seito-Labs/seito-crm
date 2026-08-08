@@ -51,25 +51,42 @@ def notify_ams_on_status_change(doc, method):
         "On Hold": "on_hold"
     }
 
-    # Build payload
+    # Build payload with all relevant fields
     payload = {
         "event": "refund_status_changed",
         "timestamp": frappe.utils.now(),
         "data": {
+            # Identifiers
             "deal_id": doc.name,
             "refund_request_id": doc.refund_request_id,
             "ticket_id": doc.ticket_id,
             "student_application_id": doc.student_application_id,
             "student_name": doc.organization,
+
+            # Status info
             "status": doc.status,
             "status_type": status_mapping.get(status_type, status_type),
             "is_final": status_type in ["Won", "Lost"],
+
+            # Financial
             "refundable_amount": doc.refundable_amount,
             "currency": doc.currency,
+
+            # Assignment
             "counsellor": doc.deal_owner,
-            "resolution_notes": doc.resolution_notes,
+
+            # For Approved (Won) - losing the student
+            "approval_notes": doc.resolution_notes if status_type == "Won" else None,
             "refund_reason": doc.lost_reason if status_type == "Won" else None,
+            "refund_reason_details": doc.lost_notes if status_type == "Won" and doc.lost_reason == "Other" else None,
+
+            # For Rejected (Lost) - keeping the student
             "rejection_notes": doc.resolution_notes if status_type == "Lost" else None,
+
+            # Generic (always included)
+            "resolution_notes": doc.resolution_notes,
+
+            # Metadata
             "updated_by": frappe.session.user,
             "updated_at": str(doc.modified)
         }
@@ -229,19 +246,37 @@ def retry_webhook(doc_name: str) -> dict:
             "timestamp": frappe.utils.now(),
             "retry": True,
             "data": {
+                # Identifiers
                 "deal_id": doc.name,
                 "refund_request_id": doc.refund_request_id,
                 "ticket_id": doc.ticket_id,
                 "student_application_id": doc.student_application_id,
                 "student_name": doc.organization,
+
+                # Status info
                 "status": doc.status,
                 "status_type": status_mapping.get(status_type, status_type),
                 "is_final": status_type in ["Won", "Lost"],
+
+                # Financial
                 "refundable_amount": doc.refundable_amount,
                 "currency": doc.currency,
+
+                # Assignment
                 "counsellor": doc.deal_owner,
-                "resolution_notes": doc.resolution_notes,
+
+                # For Approved (Won) - losing the student
+                "approval_notes": doc.resolution_notes if status_type == "Won" else None,
                 "refund_reason": doc.lost_reason if status_type == "Won" else None,
+                "refund_reason_details": doc.lost_notes if status_type == "Won" and doc.lost_reason == "Other" else None,
+
+                # For Rejected (Lost) - keeping the student
+                "rejection_notes": doc.resolution_notes if status_type == "Lost" else None,
+
+                # Generic (always included)
+                "resolution_notes": doc.resolution_notes,
+
+                # Metadata
                 "updated_by": frappe.session.user,
                 "updated_at": str(doc.modified)
             }
