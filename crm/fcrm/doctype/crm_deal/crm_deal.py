@@ -254,13 +254,26 @@ class CRMDeal(Document):
 
 	def validate_lost_reason(self):
 		"""
-		Validate the lost reason if the status is set to "Lost".
+		Validate the lost reason based on status type.
+
+		For Seito Refund workflow:
+		- Won (Approved): requires lost_reason (refund reason) - approving refund = losing student
+		- Lost (Rejected): does NOT require lost_reason - rejecting refund = keeping student
 		"""
-		if self.status and frappe.get_cached_value("CRM Deal Status", self.status, "type") == "Lost":
+		if not self.status:
+			return
+
+		status_type = frappe.get_cached_value("CRM Deal Status", self.status, "type")
+
+		# For Won (Approved) - require lost_reason as refund reason
+		if status_type == "Won":
 			if not self.lost_reason:
-				frappe.throw(_("Please specify a reason for losing the deal."), frappe.ValidationError)
+				frappe.throw(_("Please specify a refund reason for approving the request."), frappe.ValidationError)
 			elif self.lost_reason == "Other" and not self.lost_notes:
-				frappe.throw(_("Please specify the reason for losing the deal."), frappe.ValidationError)
+				frappe.throw(_("Please specify details for the refund reason."), frappe.ValidationError)
+
+		# For Lost (Rejected) - no lost_reason required, only resolution_notes (handled in validations.py)
+
 		if self.has_value_changed("status"):
 			add_or_remove_lost_reason_section_in_sidepanel(self)
 
