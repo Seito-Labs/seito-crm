@@ -649,19 +649,20 @@ const showResolutionModal = ref(false)
 const resolutionStatusType = ref('')
 
 function setResolutionNotes(statusType) {
-  // Check if resolution_notes already exists
-  if (doc.value.resolution_notes) {
-    // For Lost status, also check lost_reason
-    if (statusType === 'Lost') {
-      if (
-        doc.value.lost_reason &&
-        (doc.value.lost_reason !== 'Other' || doc.value.lost_notes)
-      ) {
-        document.save.submit()
-        return
-      }
-    } else {
-      // For Won status, resolution_notes is enough
+  // For Won (Approved) - need resolution_notes AND lost_reason (losing the student)
+  if (statusType === 'Won') {
+    if (
+      doc.value.resolution_notes &&
+      doc.value.lost_reason &&
+      (doc.value.lost_reason !== 'Other' || doc.value.lost_notes)
+    ) {
+      document.save.submit()
+      return
+    }
+  }
+  // For Lost (Rejected) - only need resolution_notes
+  else if (statusType === 'Lost') {
+    if (doc.value.resolution_notes) {
       document.save.submit()
       return
     }
