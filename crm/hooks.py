@@ -180,7 +180,8 @@ doc_events = {
 			"crm.setup.validations.validate_refund_request"
 		],
 		"on_update": [
-			"crm.fcrm.doctype.erpnext_crm_settings.erpnext_crm_settings.create_customer_in_erpnext"
+			"crm.fcrm.doctype.erpnext_crm_settings.erpnext_crm_settings.create_customer_in_erpnext",
+			"crm.api.ams_webhook.notify_ams_on_status_change"
 		],
 	},
 	"CRM Organization": {
