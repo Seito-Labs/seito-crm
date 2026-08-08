@@ -846,14 +846,9 @@ function setResolutionNotes(statusType) {
 }
 
 function beforeStatusChange(data) {
-  console.log('beforeStatusChange called with:', data)
   if (Object.hasOwn(data ?? {}, 'status')) {
-    const status = getDealStatus(data.status)
-    console.log('Status object:', status)
-    const statusType = status?.type
-    console.log('Status type:', statusType)
+    const statusType = getDealStatus(data.status)?.type
     if (statusType === 'Won' || statusType === 'Lost') {
-      console.log('Showing resolution modal for:', statusType)
       setResolutionNotes(statusType)
       return
     }
