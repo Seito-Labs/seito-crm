@@ -737,7 +737,14 @@ function triggerCall() {
 
 async function triggerStatusChange(value) {
   await triggerOnChange('status', value)
-  setLostReason()
+  const statusType = getDealStatus(document.doc.status)?.type
+  if (statusType === 'Won' || statusType === 'Lost') {
+    setResolutionNotes(statusType)
+  } else {
+    document.save.submit(null, {
+      onSuccess: () => sections.reload(),
+    })
+  }
 }
 
 function updateField(name, value) {
@@ -818,9 +825,14 @@ function setResolutionNotes(statusType) {
 }
 
 function beforeStatusChange(data) {
+  console.log('beforeStatusChange called with:', data)
   if (Object.hasOwn(data ?? {}, 'status')) {
-    const statusType = getDealStatus(data.status).type
+    const status = getDealStatus(data.status)
+    console.log('Status object:', status)
+    const statusType = status?.type
+    console.log('Status type:', statusType)
     if (statusType === 'Won' || statusType === 'Lost') {
+      console.log('Showing resolution modal for:', statusType)
       setResolutionNotes(statusType)
       return
     }
