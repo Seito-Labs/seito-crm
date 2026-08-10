@@ -118,7 +118,7 @@
   {
    "fieldname": "deal_owner",
    "fieldtype": "Link",
-   "label": "Deal Owner",
+   "label": "Owner",
    "options": "User"
   },
   {

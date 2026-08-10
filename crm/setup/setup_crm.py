@@ -548,7 +548,6 @@ def setup_quick_filters():
         "status",
         "organization",  # Student
         "deal_owner",  # Counsellor
-        "master_status",
     ]
 
     _create_quick_filter_setting("CRM Organization", student_filters)
@@ -611,7 +610,7 @@ def _update_data_fields_layout():
                 "columns": [
                     {
                         "name": "column_3",
-                        "fields": ["status", "master_status"]
+                        "fields": ["status"]
                     },
                     {
                         "name": "column_4",
@@ -626,7 +625,7 @@ def _update_data_fields_layout():
                 "columns": [
                     {
                         "name": "column_5",
-                        "fields": ["refund_reason", "counsellor_notes", "resolution_notes"]
+                        "fields": ["counsellor_notes", "resolution_notes"]
                     }
                 ]
             }
