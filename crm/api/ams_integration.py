@@ -48,13 +48,14 @@ def create_student(
         dict: {success: bool, student_id: str, message: str}
     """
     try:
-        # Check if student already exists
+        # Check if student already exists - return success with existing student
         existing = frappe.db.exists("CRM Organization", {"application_id": application_id})
         if existing:
             return {
-                "success": False,
+                "success": True,
                 "student_id": existing,
-                "message": f"Student with application_id '{application_id}' already exists"
+                "already_exists": True,
+                "message": "Student already exists"
             }
 
         # Create student
