@@ -83,7 +83,7 @@
    "fieldname": "organization",
    "fieldtype": "Link",
    "in_standard_filter": 1,
-   "label": "Organization",
+   "label": "Student",
    "options": "CRM Organization"
   },
   {
