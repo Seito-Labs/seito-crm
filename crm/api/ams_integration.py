@@ -26,6 +26,7 @@ def create_student(
     batch: str = None,
     university: str = None,
     partner: str = None,
+    counsellor: str = None,
 ) -> dict:
     """
     Create a new student in CRM.
@@ -41,6 +42,7 @@ def create_student(
         batch: Batch identifier
         university: University name
         partner: Partner name
+        counsellor: Assigned counsellor's email (User)
 
     Returns:
         dict: {success: bool, student_id: str, message: str}
@@ -67,6 +69,8 @@ def create_student(
         student.batch = batch
         student.university = university
         student.partner = partner
+        if counsellor:
+            student.counsellor = counsellor
         # organization_name is auto-generated from first_name + last_name in validate hook
 
         student.insert(ignore_permissions=True)
@@ -114,11 +118,11 @@ def create_refund_request(
         dict: {success: bool, deal_id: str, message: str}
     """
     try:
-        # Find student by application_id
+        # Find student by application_id (including counsellor for auto-assignment)
         student = frappe.db.get_value(
             "CRM Organization",
             {"application_id": student_application_id},
-            ["name", "organization_name"],
+            ["name", "organization_name", "counsellor"],
             as_dict=True
         )
 
@@ -148,10 +152,14 @@ def create_refund_request(
                 "name"
             )
 
-        # Find counsellor user if email provided
+        # Determine deal owner (counsellor)
+        # Priority: 1) API parameter, 2) Student's assigned counsellor
         deal_owner = None
         if counsellor_email:
             deal_owner = frappe.db.get_value("User", {"email": counsellor_email}, "name")
+        elif student.counsellor:
+            # Auto-assign from student's counsellor
+            deal_owner = student.counsellor
 
         # Create refund request
         deal = frappe.new_doc("CRM Deal")
@@ -172,6 +180,7 @@ def create_refund_request(
         return {
             "success": True,
             "deal_id": deal.name,
+            "counsellor": deal_owner,
             "message": "Refund request created successfully"
         }
 
@@ -294,7 +303,7 @@ def get_student(application_id: str) -> dict:
                 "name", "organization_name", "application_id",
                 "first_name", "last_name", "student_email", "student_phone",
                 "program", "elective", "batch", "university", "partner",
-                "creation", "modified"
+                "counsellor", "creation", "modified"
             ],
             as_dict=True
         )
@@ -321,6 +330,7 @@ def get_student(application_id: str) -> dict:
                 "batch": student.batch,
                 "university": student.university,
                 "partner": student.partner,
+                "counsellor": student.counsellor,
                 "created_at": str(student.creation),
                 "updated_at": str(student.modified)
             },
@@ -348,6 +358,7 @@ def update_student(
     batch: str = None,
     university: str = None,
     partner: str = None,
+    counsellor: str = None,
 ) -> dict:
     """
     Update an existing student in CRM.
@@ -355,6 +366,7 @@ def update_student(
     Args:
         application_id: Student's application ID (required, used to find student)
         Other fields: Fields to update (only provided fields are updated)
+        counsellor: Assigned counsellor's email (User)
 
     Returns:
         dict: {success: bool, student_id: str, message: str}
@@ -394,6 +406,8 @@ def update_student(
             student.university = university
         if partner is not None:
             student.partner = partner
+        if counsellor is not None:
+            student.counsellor = counsellor
 
         student.save(ignore_permissions=True)
         frappe.db.commit()

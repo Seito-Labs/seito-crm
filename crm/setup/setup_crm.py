@@ -280,6 +280,16 @@ def add_student_custom_fields():
             "insert_after": "university",
             "in_standard_filter": 1,
         },
+        {
+            "dt": "CRM Organization",
+            "fieldname": "counsellor",
+            "label": "Counsellor",
+            "fieldtype": "Link",
+            "options": "User",
+            "insert_after": "partner",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+        },
     ]
 
     _create_custom_fields(custom_fields)
