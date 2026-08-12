@@ -2,7 +2,8 @@ name: Build and Push Image
 
 # Replaces the previous builds.yml entirely (was broken: pointed at upstream
 # frappe/crm + frappe/frappe_docker instead of the Seito-Labs forks, pushed to ghcr.io
-# instead of our Artifact Registry, no cache-bust). 
+# instead of our Artifact Registry, no cache-bust). builds.yml is disabled via GitHub Actions UI, and 
+# this Build and Push Image workflow is now the only one that runs on push to main.
 on:
   push:
     branches:
@@ -20,8 +21,6 @@ jobs:
   build-and-push:
     name: Build and push image
     runs-on: ubuntu-latest
-    # Protected environment — this job pauses for manual approval before running at
-    # all. Configure at: Settings -> Environments -> image-build -> required reviewers.
     environment: prod
 
     steps:
