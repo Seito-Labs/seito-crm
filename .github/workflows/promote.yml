@@ -100,9 +100,19 @@ jobs:
           path: gitops-deployments
 
       - name: Install kustomize
+        # A pinned, direct release-asset download — not the upstream install_kustomize.sh
+        # script (curl | bash against "master"), which resolves "latest" via GitHub's
+        # API and is prone to failing under rate-limiting on shared GitHub-hosted
+        # runner IPs (hit exactly that: a rate-limited/error response piped into tar
+        # produced "gzip: stdin: not in gzip format"). This direct asset URL has no
+        # API-resolution step, and pins the exact version already used locally (v5.8.1)
+        # so CI and local `kustomize edit`/`kustomize build` behave identically.
         run: |
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          sudo mv kustomize /usr/local/bin/kustomize
+          set -euo pipefail
+          curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz" \
+            | tar xz -C /tmp
+          sudo mv /tmp/kustomize /usr/local/bin/kustomize
+          kustomize version
 
       - name: Bump the image tag in the prod overlay
         id: bump
