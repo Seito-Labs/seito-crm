@@ -1,21 +1,6 @@
 #!/usr/bin/env bash
 # CI build script — builds and pushes the Seito CRM image to Artifact Registry.
 #
-# Adapted from deploy/image-build/build.sh (the local/manual script, in the
-# infra-planning workspace, NOT this repo — kept as-is with its content-verification
-# step). Two real differences here, not cosmetic:
-#
-#   1. Post-push content verification is REMOVED — an explicit, discussed decision.
-#      See CI_CD_PLAN.md's pushback table and FUTURE_IMPROVEMENTS.md item 18 for the
-#      residual risk this accepts: nothing now catches a build that silently contains
-#      the wrong commit, the way this exact class of bug was caught once before.
-#
-#   2. Repo paths and the commit to build come from the calling workflow, not resolved
-#      here via `git fetch`. The workflow already knows exactly which commit triggered
-#      it (github.sha) — re-resolving "origin/main" inside this script would risk
-#      building a DIFFERENT, newer commit than the one this run is actually for, if
-#      main moved again while this run was queued waiting for manual approval.
-#
 # CACHE_BUST is still set to the exact commit SHA — that is the actual fix for the
 # staleness bug this whole design exists because of. Dropping verification does not
 # make this step optional; do not remove it.
