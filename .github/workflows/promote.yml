@@ -1,0 +1,149 @@
+name: Promote to prod
+
+# Separate from build-and-push.yml, deliberately — this is a second, distinct human
+# decision ("deploy this already-built image"), not an automatic continuation of the
+# build. Triggered manually with the exact tag to promote (copy it from the build
+# workflow's Job Summary), gated by its own GitHub Environment, independent of the
+# build's own `prod` approval. See CD_PLAN.md and CI_CD_PLAN.md for the full design.
+#
+# Being a separate, tag-input workflow (rather than a second job chained onto
+# build-and-push.yml) also means it can promote ANY previously-built tag, not only the
+# one just built — which is what makes a rollback ("redeploy the last known-good image,
+# no rebuild") possible at all. A chained same-run job could only ever promote what it
+# just built.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to promote, e.g. main-a8c7bec9 (from the build workflow's Job Summary)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # required to mint the OIDC token for Workload Identity Federation
+
+concurrency:
+  group: promote-seito-crm-prod
+  cancel-in-progress: false # never cancel a promotion that may already be mid-push
+
+jobs:
+  promote:
+    name: Promote image to prod
+    runs-on: ubuntu-latest
+    # Protected environment — separate from build-and-push.yml's own `prod` gate. This
+    # is a second, distinct approval: "build this" and "deploy this" are different
+    # decisions, made at different times, by (possibly) different people.
+    environment: prod-deploy
+
+    env:
+      REGISTRY: asia-south1-docker.pkg.dev/org-dev-infra/seito-crm/crm
+      GITOPS_REPO: Seito-Labs/gitops-deployments
+      OVERLAY_PATH: apps/seito-crm/overlays/prod
+
+    steps:
+      - name: Authenticate to GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/794839270073/locations/global/workloadIdentityPools/github/providers/github-seito-labs
+          service_account: github-ci-publisher@org-dev-infra.iam.gserviceaccount.com
+
+      - name: Verify the tag actually exists before promoting it
+        # Guards against promoting a typo'd or nonexistent tag — fail loudly here,
+        # before anything is committed to the GitOps repo, rather than after ArgoCD
+        # tries and fails to pull a nonexistent image.
+        run: |
+          set -euo pipefail
+          if ! gcloud artifacts docker images describe \
+              "${REGISTRY}:${{ inputs.tag }}" --quiet > /dev/null 2>&1; then
+            echo "::error::${REGISTRY}:${{ inputs.tag }} does not exist in Artifact Registry — refusing to promote it."
+            exit 1
+          fi
+          echo "Confirmed ${REGISTRY}:${{ inputs.tag }} exists."
+
+      - name: Generate token for gitops-deployments (write)
+        # Deliberately a SEPARATE, dedicated GitHub App from the one build-and-push.yml
+        # uses for frappe_crm checkout (GH_APP_ID/GH_APP_PRIVATE_KEY) — not the same App
+        # with expanded permissions. A GitHub App's permission grant is per-App, not
+        # per-repo: if this used the same App with Contents:Write added, that write
+        # capability would apply to every repo the App is installed on unless every
+        # single token-minting step everywhere remembers to explicitly narrow
+        # `permissions` back down per request. That's a discipline-dependent guarantee,
+        # not a structural one, and it gets weaker as more repos onboard this pattern.
+        # A dedicated App, installed ONLY on gitops-deployments, is structurally
+        # incapable of touching frappe_crm at all — no token request can grant access
+        # to a repo the App was never installed on, regardless of its permissions.
+        #
+        # GH_GITOPS_APP_ID / GH_GITOPS_APP_PRIVATE_KEY (from the "Seito-GitOps-App"
+        # GitHub App) are repo secrets on seito-crm — NOT organization secrets, despite
+        # every future app onboarded onto this same promote pattern needing this exact
+        # credential too. Org secrets would have been the better fit (see CD_PLAN.md),
+        # but the org's current GitHub plan doesn't support scoping an org secret to
+        # "Selected repositories" for private repos, and "All repositories" would
+        # expose it to every unrelated repo in the org too. Tracked as a real scaling
+        # cost: onboarding app #2 means duplicating this secret value onto its repo by
+        # hand, and rotation means updating every repo with a copy. Revisit if the
+        # org's GitHub plan ever changes.
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_GITOPS_APP_ID }}
+          private-key: ${{ secrets.GH_GITOPS_APP_PRIVATE_KEY }}
+          owner: Seito-Labs
+          repositories: gitops-deployments
+
+      - name: Checkout gitops-deployments
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: gitops-deployments
+
+      - name: Install kustomize
+        # A pinned, direct release-asset download — not the upstream install_kustomize.sh
+        # script (curl | bash against "master"), which resolves "latest" via GitHub's
+        # API and is prone to failing under rate-limiting on shared GitHub-hosted
+        # runner IPs (hit exactly that: a rate-limited/error response piped into tar
+        # produced "gzip: stdin: not in gzip format"). This direct asset URL has no
+        # API-resolution step, and pins the exact version already used locally (v5.8.1)
+        # so CI and local `kustomize edit`/`kustomize build` behave identically.
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz" \
+            | tar xz -C /tmp
+          sudo mv /tmp/kustomize /usr/local/bin/kustomize
+          kustomize version
+
+      - name: Bump the image tag in the prod overlay
+        id: bump
+        working-directory: gitops-deployments/${{ env.OVERLAY_PATH }}
+        run: |
+          set -euo pipefail
+          kustomize edit set image "${REGISTRY}=${REGISTRY}:${{ inputs.tag }}"
+          if git -C "${{ github.workspace }}/gitops-deployments" diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No change — ${{ inputs.tag }} is already promoted to prod."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.bump.outputs.changed == 'true'
+        working-directory: gitops-deployments
+        run: |
+          set -euo pipefail
+          git config user.name "seito-ci-promote[bot]"
+          git config user.email "seito-ci-promote[bot]@users.noreply.github.com"
+          git add "${OVERLAY_PATH}/kustomization.yaml"
+          git commit \
+            -m "promote seito-crm to ${{ inputs.tag }}" \
+            -m "Triggered by @${{ github.actor }} via promote.yml (seito-crm run ${{ github.run_id }})."
+          git push
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.bump.outputs.changed }}" = "true" ]; then
+            echo "Promoted seito-crm prod to \`${{ inputs.tag }}\`. ArgoCD will sync it (currently: manual sync only — see CD_PLAN.md)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "\`${{ inputs.tag }}\` was already the promoted tag — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          fi

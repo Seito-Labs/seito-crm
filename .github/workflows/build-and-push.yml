@@ -1,0 +1,74 @@
+name: Build and Push Image
+
+# Replaces the previous builds.yml entirely (was broken: pointed at upstream
+# frappe/crm + frappe/frappe_docker instead of the Seito-Labs forks, pushed to ghcr.io
+# instead of our Artifact Registry, no cache-bust). builds.yml is disabled via GitHub Actions UI, and 
+# this Build and Push Image workflow is now the only one that runs on push to main.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write # required to mint the OIDC token for Workload Identity Federation
+
+concurrency:
+  group: build-and-push-${{ github.ref }}
+  cancel-in-progress: false # never cancel a build that may already be mid-push
+
+jobs:
+  build-and-push:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout seito-crm
+        uses: actions/checkout@v4
+
+      # frappe_crm is a separate, PRIVATE repo that owns the actual Docker build
+      # recipe (images/layered/Containerfile) — seito-crm has no Dockerfile of its
+      # own, by design (mirrors upstream: frappe/crm has none either, relying on
+      # frappe/frappe_docker for exactly this). The default GITHUB_TOKEN here is
+      # scoped only to seito-crm, so a separate cross-repo credential is required.
+      - name: Generate token for frappe_crm checkout
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: Seito-Labs
+          repositories: frappe_crm
+
+      - name: Checkout frappe_crm (build context)
+        uses: actions/checkout@v4
+        with:
+          repository: Seito-Labs/frappe_crm
+          token: ${{ steps.app-token.outputs.token }}
+          path: frappe_crm
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/794839270073/locations/global/workloadIdentityPools/github/providers/github-seito-labs
+          service_account: github-ci-publisher@org-dev-infra.iam.gserviceaccount.com
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Build and push
+        id: build
+        env:
+          FRAPPE_CRM_DIR: ${{ github.workspace }}/frappe_crm
+          APPS_JSON: ${{ github.workspace }}/.github/scripts/apps.json
+          REF: main
+          FULL_SHA: ${{ github.sha }}
+        run: ./.github/scripts/build.sh
+
+      - name: Summary
+        run: |
+          echo "Pushed image tag: \`${{ steps.build.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
