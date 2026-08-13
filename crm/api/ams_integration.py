@@ -102,6 +102,7 @@ def create_refund_request(
     refund_reason: str = None,
     currency: str = "INR",
     counsellor_email: str = None,
+    documents: list = None,
 ) -> dict:
     """
     Create a new refund request in CRM.
@@ -114,6 +115,7 @@ def create_refund_request(
         refund_reason: Reason for refund
         currency: Currency code (default: INR)
         counsellor_email: Email of assigned counsellor
+        documents: List of document objects with doc_type, display_name, gcs_path, file_url, mime_type
 
     Returns:
         dict: {success: bool, deal_id: str, message: str}
@@ -174,6 +176,17 @@ def create_refund_request(
         deal.status = default_status
         if deal_owner:
             deal.deal_owner = deal_owner
+
+        # Add documents if provided
+        if documents:
+            for doc in documents:
+                deal.append("documents", {
+                    "doc_type": doc.get("doc_type"),
+                    "display_name": doc.get("display_name"),
+                    "gcs_path": doc.get("gcs_path"),
+                    "file_url": doc.get("file_url"),
+                    "mime_type": doc.get("mime_type"),
+                })
 
         deal.insert(ignore_permissions=True)
         frappe.db.commit()

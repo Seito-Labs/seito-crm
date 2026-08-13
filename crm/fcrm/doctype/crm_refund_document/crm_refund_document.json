@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "creation": "2024-08-10 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "doc_type",
+  "display_name",
+  "column_break_1",
+  "gcs_path",
+  "file_url",
+  "mime_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "doc_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Document Type"
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Name"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gcs_path",
+   "fieldtype": "Data",
+   "label": "GCS Path"
+  },
+  {
+   "fieldname": "file_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "File URL"
+  },
+  {
+   "fieldname": "mime_type",
+   "fieldtype": "Data",
+   "label": "MIME Type"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-08-10 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Refund Document",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

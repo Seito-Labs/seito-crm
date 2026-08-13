@@ -379,6 +379,21 @@ def add_refund_request_custom_fields():
             "insert_after": "counsellor_notes",
             "description": "Notes for Approved/Rejected resolution",
         },
+        {
+            "dt": "CRM Deal",
+            "fieldname": "documents_section",
+            "label": "Documents",
+            "fieldtype": "Section Break",
+            "insert_after": "resolution_notes",
+        },
+        {
+            "dt": "CRM Deal",
+            "fieldname": "documents",
+            "label": "Documents",
+            "fieldtype": "Table",
+            "options": "CRM Refund Document",
+            "insert_after": "documents_section",
+        },
     ]
 
     _create_custom_fields(custom_fields)
